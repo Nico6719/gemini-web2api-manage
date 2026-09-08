@@ -659,48 +659,63 @@ def install() -> None:
     _installed = True
 
 
-# ─── 8. 模型目录诚实化 ─────────────────────────────────────────────────────
-# 实测（2026-08-31）：匿名模式下 payload 的 mode(inner[79]) 与 think(inner[17])
-# 对 Google 路由完全无效 —— mode 取 1..6 时响应 inner[42] 一律回报
-# "3.5 Flash-Lite"。上游模型表把这些档位描述成可选的高级模型，等于对用户撒谎。
-# 这里只改描述、保留键名（客户端可能已在请求这些名字），并明确 Cookie 依赖。
-#
+# ─── 8. 模型目录对齐与诚实化 ─────────────────────────────────────────────
+# 对齐记录（2026-09-08，官方 API 文档 ai.google.dev/gemini-api/docs/models 实测）：
+#   官方已发布的 Flash 系：gemini-3.8-flash / 3.7 / 3.6 / 3.5 / 3.5-flash-lite /
+#   3.1-flash-lite ...。3.8-flash 已出现在官方模型表并排首位（早前检索显示它还在
+#   内部测试，文档现确认发布）。
+#   网页端（BardChatUi）没有"按名字路由"的通道 —— 只有 mode 枚举，且 Google 会把
+#   FAST 档（mode=1）滚动指向当下最新 Flash。所以：
+#     * 请求名只是"档位意图"，实际服务版本看响应 served_model；
+#     * 2026-09-01 带 Cookie 实测：mode=1 曾落到 3.1 Pro / 3.6 Flash ——
+#       档位与版本号之间由 Google 侧决定，不能保证精确命中请求名；
+#     * 匿名恒为 3.5 Flash-Lite（服务端封顶）。
 # 注意：必须**原地 mutate** MODELS 这个 dict。上游 server.py 用
 # `from .models import MODELS` 按值绑定了该对象，重新绑定名字它看不到。
 _ANON_CAP_NOTE = "匿名模式实测被服务端封顶为 3.5 Flash-Lite"
+_ROLL_NOTE = ("网页端按档位路由且档位会滚动到最新 Flash，"
+              "实际服务版本以响应 served_model 为准，无法保证精确命中请求名")
 
-_MODEL_DESCRIPTIONS = {
-    "gemini-3.7-flash": (
-        "与 gemini-3.6-flash 的 mode/think 完全相同（mode=1, think=4），"
-        f"属别名而非独立模型；{_ANON_CAP_NOTE}，需 Cookie 才可能真实路由"),
-    "gemini-3.6-flash": (
-        f"官网当前匿名可选档位之一（mode=1）；{_ANON_CAP_NOTE}"),
-    "gemini-3.5-flash": (
-        f"gemini-3.6-flash 的别名；{_ANON_CAP_NOTE}"),
-    "gemini-3.5-flash-thinking": (
-        f"深度思考档（mode=2）；{_ANON_CAP_NOTE}，"
-        "think 参数对匿名请求无效，需 Cookie"),
-    "gemini-3.1-pro": (
-        f"高级推理档（mode=3）；{_ANON_CAP_NOTE}，"
-        "必须配置 Cookie 才可能真实路由到 Pro"),
-    "gemini-3.1-pro-enhanced": (
+_MODEL_CATALOG = {
+    "gemini-3.8-flash": (1, 4,
+        "官方 API 已发布的当前最新 Flash（2026-09-08 文档确认，排模型表首位）。"
+        f"经网页端 mode=1 档请求；{_ROLL_NOTE}；{_ANON_CAP_NOTE}，需 Cookie"),
+    "gemini-3.7-flash": (1, 4,
+        f"与 gemini-3.6/3.5 同为 mode=1 档位名（官方 API 独立端点，网页端同档）；"
+        f"{_ROLL_NOTE}；{_ANON_CAP_NOTE}，需 Cookie 才可能真实路由"),
+    "gemini-3.6-flash": (1, 4,
+        f"mode=1 档位名（官方 API 独立端点）；{_ROLL_NOTE}；{_ANON_CAP_NOTE}"),
+    "gemini-3.5-flash": (1, 4,
+        f"mode=1 档位名（官方 API 独立端点）；{_ROLL_NOTE}；{_ANON_CAP_NOTE}"),
+    "gemini-3.5-flash-thinking": (2, 0,
+        f"深度思考档（mode=2）；{_ROLL_NOTE}；{_ANON_CAP_NOTE}，需 Cookie"),
+    "gemini-3.1-pro": (3, 4,
+        "高级推理档（mode=3），对应官网菜单「3.1 Pro」（官方 API 端点为 "
+        f"gemini-3.1-pro-preview）。{_ANON_CAP_NOTE}，必须配置 Cookie 才可能真实路由"),
+    "gemini-3.1-pro-enhanced": (3, 4,
         f"Pro 增强输出实验档（mode=3 + 额外字段）；{_ANON_CAP_NOTE}，需 Cookie"),
-    "gemini-auto": (
+    "gemini-auto": (4, 4,
         f"自动选档（mode=4）；{_ANON_CAP_NOTE}"),
-    "gemini-3.5-flash-thinking-lite": (
+    "gemini-3.5-flash-thinking-lite": (5, 0,
         f"动态思考档（mode=5）；{_ANON_CAP_NOTE}，需 Cookie"),
-    "gemini-flash-lite": (
+    "gemini-3.5-flash-lite": (6, 4,
+        "官方 API 的 lite 档命名，与 gemini-flash-lite 同为 mode=6。"
+        f"{_ANON_CAP_NOTE}"),
+    "gemini-flash-lite": (6, 4,
         f"轻量档（mode=6）；匿名实测唯一真实可用的模型即为此档（3.5 Flash-Lite）"),
 }
 
 
 def install_model_catalog() -> None:
-    """把诚实化描述写进上游 MODELS dict（原地 mutate，幂等）。"""
+    """把对齐后的模型目录写进上游 MODELS dict（原地 mutate，幂等）。"""
     try:
         from gemini_web2api.models import MODELS
     except Exception:
         return
-    for name, desc in _MODEL_DESCRIPTIONS.items():
+    for name, (mode, think, desc) in _MODEL_CATALOG.items():
         cfg = MODELS.get(name)
-        if isinstance(cfg, dict):
+        if cfg is None:
+            # 新增键：直接插入（resolve_model 与 /v1/models 都读这个 dict）
+            MODELS[name] = {"mode": mode, "think": think, "desc": desc}
+        elif isinstance(cfg, dict):
             cfg["desc"] = desc
