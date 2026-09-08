@@ -1,5 +1,25 @@
 # 更新日志
 
+## v3.5.0 (2026-09-08)
+
+### 新增
+
+- **模型目录对齐官方最新：新增 `gemini-3.8-flash`**。2026-09-08 对齐官方模型文档（ai.google.dev/gemini-api/docs/models）时发现 Google 已把 **Gemini 3.8 Flash** 发布并排到模型表首位（早前检索只显示它在内部测试），而我们的目录停在 3.7。现已新增：
+  - `gemini-3.8-flash`（mode=1/think=4，与 3.7/3.6/3.5 同为 FAST 档位名）
+  - `gemini-3.5-flash-lite`（mode=6，官方 lite 档命名；与既有 `gemini-flash-lite` 同档）
+  - 模型数 9 → 11；`/v1/models` 与 `resolve_model` 均已支持，未知模型名仍回落默认模型
+- **模型描述整体改写为反映实测机制**：网页端没有"按名字路由"的通道，只有 mode 枚举，且 Google 会把 FAST 档（mode=1）滚动指向当下最新 Flash —— 所以请求名只是档位意图，实际服务版本以响应 `served_model` 为准（2026-09-01 带 Cookie 实测 mode=1 曾落到 3.1 Pro / 3.6 Flash，无法保证精确命中请求名）。`install_model_catalog` 从"只改描述"升级为"支持原地新增键"。
+
+### 变更
+
+- 生产 BL 持续自动跟随（本次观测：官网页面 `20260905.01_p2`、生产运行时已刷到过 `20260907.07_p0`，config 文件内的旧值只是启动兜底）。
+
+### 验证
+
+- `resolve_model('gemini-3.8-flash')` 与 `@think=0` 覆盖正常；解析 13/13、推送端到端 21/21、协议回归 17/17。
+- 生产实测：`/v1/models` 返回 11 个模型、含 3.8；匿名请求 `gemini-3.8-flash` 正常返回（服务端封顶为 `3.5 Flash-Lite`）。
+- 说明：本机出口 IP 曾触发 Google 302/sorry 反滥用拦截（测试请求过多），与本次改动无关，生产 IP 未受影响。
+
 ## v3.4.0 (2026-09-01)
 
 ### 新增
