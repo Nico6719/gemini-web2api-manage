@@ -38,9 +38,25 @@ ADMIN_HTML = """<!doctype html>
 
 
 def package_dir() -> Path:
+    """Return the directory containing bundled package resources."""
+
+    # PyInstaller one-file 模式：
+    # 资源会被解压到 sys._MEIPASS 临时目录。
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve().parent / "gemini_web2api"
+        bundle_dir = getattr(sys, "_MEIPASS", None)
+
+        if bundle_dir:
+            return Path(bundle_dir) / "gemini_web2api"
+
+        # 兼容没有 _MEIPASS 的打包模式
+        return (
+            Path(sys.executable).resolve().parent
+            / "gemini_web2api"
+        )
+
+    # 普通 Python 源码运行模式
     return Path(__file__).resolve().parent
+
 
 
 def admin_static_dir() -> Path:
