@@ -1,9 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
+"""PyInstaller spec for the Gemini Web2API Manage server."""
 
 from pathlib import Path
 import sys
 
-# SPECPATH 指向项目根目录下的 deploy 目录
+# SPECPATH 指向项目根目录下的 deploy 目录，
+# 因此向上一级才是项目根目录。
 ROOT = Path(SPECPATH).resolve().parent
 
 UPSTREAM = ROOT / "_upstream"
@@ -13,25 +15,33 @@ if str(UPSTREAM) not in sys.path:
 
 from PyInstaller.utils.hooks import collect_submodules
 
+
+# 前端源码构建产物的实际位置
 ADMIN_STATIC = ROOT / "gemini_web2api_manage" / "admin_static"
+
 
 hiddenimports = (
     collect_submodules("gemini_web2api")
     + collect_submodules("gemini_web2api_manage")
 )
 
+
 a = Analysis(
-    [str(ROOT / "gemini_web2api_manage" / "__main__.py")],
+    [
+        str(ROOT / "gemini_web2api_manage" / "__main__.py"),
+    ],
     pathex=[
         str(ROOT),
         str(UPSTREAM),
     ],
     binaries=[],
     datas=[
+        # 左侧：源码中的实际目录
+        # 右侧：程序运行时实际读取的目录
         (
             str(ADMIN_STATIC),
-            "gemini_web2api_manage/admin_static",
-        )
+            "gemini_web2api/admin_static",
+        ),
     ],
     hiddenimports=hiddenimports,
     hookspath=[],
@@ -42,7 +52,9 @@ a = Analysis(
     optimize=0,
 )
 
+
 pyz = PYZ(a.pure)
+
 
 exe = EXE(
     pyz,
