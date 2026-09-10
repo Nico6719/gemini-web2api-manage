@@ -4,15 +4,19 @@
 Build on the target platform. PyInstaller does not cross-compile native
 bootloaders, so Linux artifacts must be built on Linux (or a Linux CI runner).
 """
+
 from pathlib import Path
 import sys
 
-ROOT = Path(SPECPATH).resolve().parent
+# spec 文件在 deploy/ 目录，向上两级才是项目根目录
+ROOT = Path(SPECPATH).resolve().parent.parent
 UPSTREAM = ROOT / "_upstream"
+
 if str(UPSTREAM) not in sys.path:
     sys.path.insert(0, str(UPSTREAM))
 
 from PyInstaller.utils.hooks import collect_submodules
+
 ADMIN_STATIC = ROOT / "gemini_web2api_manage" / "admin_static"
 
 hiddenimports = (
@@ -24,7 +28,12 @@ a = Analysis(
     [str(ROOT / "gemini_web2api_manage" / "__main__.py")],
     pathex=[str(ROOT), str(UPSTREAM)],
     binaries=[],
-    datas=[(str(ADMIN_STATIC), "gemini_web2api_manage/admin_static")],
+    datas=[
+        (
+            str(ADMIN_STATIC),
+            "gemini_web2api_manage/admin_static",
+        )
+    ],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
