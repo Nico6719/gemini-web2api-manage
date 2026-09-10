@@ -1,11 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec for the manage edition binary."""
 
 from pathlib import Path
 import sys
 
-# SPECPATH 已经是项目根目录
-ROOT = Path(SPECPATH).resolve()
+# SPECPATH 指向项目根目录下的 deploy 目录
+ROOT = Path(SPECPATH).resolve().parent
 
 UPSTREAM = ROOT / "_upstream"
 
@@ -22,9 +21,7 @@ hiddenimports = (
 )
 
 a = Analysis(
-    [
-        str(ROOT / "gemini_web2api_manage" / "__main__.py")
-    ],
+    [str(ROOT / "gemini_web2api_manage" / "__main__.py")],
     pathex=[
         str(ROOT),
         str(UPSTREAM),
