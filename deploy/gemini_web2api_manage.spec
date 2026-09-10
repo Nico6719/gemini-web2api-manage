@@ -1,15 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec for the manage edition binary.
-
-Build on the target platform. PyInstaller does not cross-compile native
-bootloaders, so Linux artifacts must be built on Linux (or a Linux CI runner).
-"""
+"""PyInstaller spec for the manage edition binary."""
 
 from pathlib import Path
 import sys
 
-# spec 文件在 deploy/ 目录，向上两级才是项目根目录
-ROOT = Path(SPECPATH).resolve().parent.parent
+# SPECPATH 已经是项目根目录
+ROOT = Path(SPECPATH).resolve()
+
 UPSTREAM = ROOT / "_upstream"
 
 if str(UPSTREAM) not in sys.path:
@@ -25,8 +22,13 @@ hiddenimports = (
 )
 
 a = Analysis(
-    [str(ROOT / "gemini_web2api_manage" / "__main__.py")],
-    pathex=[str(ROOT), str(UPSTREAM)],
+    [
+        str(ROOT / "gemini_web2api_manage" / "__main__.py")
+    ],
+    pathex=[
+        str(ROOT),
+        str(UPSTREAM),
+    ],
     binaries=[],
     datas=[
         (
